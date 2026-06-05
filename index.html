@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Warehouse Ops — Candidate Screener</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --paper:#f4f1ea;
+    --ink:#16140f;
+    --ink-soft:#5c574c;
+    --line:#d8d2c4;
+    --line-soft:#e6e1d6;
+    --card:#fbf9f4;
+    --crimson:#c8102e;
+    --crimson-deep:#8f0a20;
+    --green:#1d6e4a;
+    --green-bg:#e3efe6;
+    --amber:#8a5a00;
+    --amber-bg:#f6ead0;
+    --red:#a3232b;
+    --red-bg:#f5e0e1;
+    --gray-bg:#ece8de;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'IBM Plex Sans',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  /* Header */
+  header{border-bottom:2px solid var(--ink);background:var(--paper);position:sticky;top:0;z-index:20}
+  .head-inner{display:flex;align-items:flex-end;justify-content:space-between;padding:22px 24px 16px;max-width:1080px;margin:0 auto;gap:24px;flex-wrap:wrap}
+  .brand{display:flex;flex-direction:column;gap:2px}
+  .brand .kicker{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--crimson);font-weight:600}
+  .brand h1{font-family:'Archivo',sans-serif;font-weight:800;font-size:26px;letter-spacing:-0.5px;line-height:1.05}
+  .role-tag{text-align:right;font-size:12px;color:var(--ink-soft);line-height:1.45}
+  .role-tag b{color:var(--ink);font-weight:600}
+
+  /* Criteria bar */
+  .criteria{background:var(--ink);color:var(--paper)}
+  .criteria-inner{max-width:1080px;margin:0 auto;padding:12px 24px;display:flex;gap:28px;flex-wrap:wrap;align-items:center}
+  .criteria .cl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:.55}
+  .crit-item{font-size:12.5px;display:flex;align-items:center;gap:7px}
+  .crit-item .dot{width:7px;height:7px;background:var(--crimson);border-radius:50%;flex:none}
+
+  /* Sections */
+  section{padding:32px 0}
+  .sec-label{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+  .sec-label::before{content:"";width:22px;height:2px;background:var(--crimson)}
+
+  /* Dropzone */
+  .drop{border:2px dashed var(--line);background:var(--card);border-radius:6px;padding:34px 24px;text-align:center;cursor:pointer;transition:.15s}
+  .drop:hover{border-color:var(--ink-soft);background:#fff}
+  .drop.over{border-color:var(--crimson);background:#fff}
+  .drop .big{font-family:'Archivo',sans-serif;font-weight:700;font-size:18px;margin-bottom:4px}
+  .drop .small{font-size:12.5px;color:var(--ink-soft)}
+  .drop svg{width:30px;height:30px;stroke:var(--ink-soft);margin-bottom:10px}
+
+  .or{text-align:center;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-soft);margin:16px 0}
+  textarea{width:100%;min-height:120px;resize:vertical;border:1.5px solid var(--line);border-radius:6px;padding:12px 14px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:var(--card);color:var(--ink);line-height:1.5}
+  textarea:focus{outline:none;border-color:var(--ink)}
+
+  /* Resume chips */
+  .chips{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+  .chip{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:11px 14px}
+  .chip .ic{width:34px;height:34px;border-radius:5px;background:var(--gray-bg);display:flex;align-items:center;justify-content:center;flex:none;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;color:var(--crimson-deep)}
+  .chip .meta{flex:1;min-width:0}
+  .chip .meta .nm{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip .meta .sz{font-size:11px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace}
+  .chip .rm{cursor:pointer;color:var(--ink-soft);font-size:20px;line-height:1;border:none;background:none;padding:4px 8px;border-radius:4px}
+  .chip .rm:hover{color:var(--red);background:var(--red-bg)}
+
+  /* Buttons */
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:20px}
+  button.btn{font-family:'IBM Plex Sans',sans-serif;cursor:pointer;border-radius:6px;font-size:14px;font-weight:600;padding:12px 22px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);transition:.12s;display:inline-flex;align-items:center;gap:8px}
+  button.btn:hover{background:var(--ink);color:var(--paper)}
+  button.btn.primary{background:var(--crimson);border-color:var(--crimson);color:#fff}
+  button.btn.primary:hover{background:var(--crimson-deep);border-color:var(--crimson-deep)}
+  button.btn:disabled{opacity:.4;cursor:not-allowed}
+  button.btn.ghost{border-color:var(--line);font-weight:500}
+  button.btn.ghost:hover{background:var(--gray-bg);color:var(--ink)}
+
+  /* Progress */
+  #progress{display:none;text-align:center;padding:40px 0}
+  .pbar{height:5px;background:var(--line-soft);border-radius:3px;overflow:hidden;max-width:420px;margin:18px auto 8px}
+  .pfill{height:100%;background:var(--crimson);width:0;transition:width .4s}
+  #progress .pmsg{font-size:13px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace}
+
+  /* Results */
+  #results{display:none}
+  .res-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:12px;margin-bottom:6px}
+  .res-head h2{font-family:'Archivo',sans-serif;font-weight:800;font-size:22px}
+
+  /* Ranking table */
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--card)}
+  table.rank{width:100%;border-collapse:collapse;font-size:13px;min-width:760px}
+  table.rank th{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-soft);text-align:left;padding:12px 14px;border-bottom:2px solid var(--ink);font-weight:600;background:var(--gray-bg)}
+  table.rank td{padding:13px 14px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+  table.rank tr:last-child td{border-bottom:none}
+  table.rank tr.clickable{cursor:pointer}
+  table.rank tr.clickable:hover td{background:#fff}
+  .rk{font-family:'Archivo',sans-serif;font-weight:800;font-size:17px;color:var(--ink)}
+  .nm-cell b{font-weight:600;font-size:14px;display:block}
+  .nm-cell span{font-size:11.5px;color:var(--ink-soft)}
+  .fit{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px}
+  .pill{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.5px;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .pill.strong{background:var(--green-bg);color:var(--green)}
+  .pill.possible{background:var(--amber-bg);color:var(--amber)}
+  .pill.weak{background:var(--red-bg);color:var(--red)}
+  .pill.no{background:var(--gray-bg);color:var(--ink-soft)}
+  .flag{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px}
+  .flag.ok{color:var(--green)}
+  .flag.warn{color:var(--amber)}
+  .flag.bad{color:var(--red)}
+
+  /* Deep dive cards */
+  .dive{border:1px solid var(--line);border-radius:8px;background:var(--card);margin-bottom:18px;overflow:hidden}
+  .dive-head{display:flex;align-items:center;gap:18px;padding:20px 22px;border-bottom:1px solid var(--line-soft);background:#fff;flex-wrap:wrap}
+  .ring{width:64px;height:64px;border-radius:50%;border:4px solid;display:flex;align-items:center;justify-content:center;font-family:'Archivo',sans-serif;font-weight:800;font-size:20px;flex:none}
+  .dive-head .who{flex:1;min-width:160px}
+  .dive-head .who h3{font-family:'Archivo',sans-serif;font-weight:700;font-size:19px;letter-spacing:-.3px}
+  .dive-head .who .sub{font-size:12.5px;color:var(--ink-soft);margin-top:2px}
+  .dive-body{padding:22px}
+  .callouts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px}
+  @media(max-width:640px){.callouts{grid-template-columns:1fr}}
+  .callout{border-radius:6px;padding:13px 15px;border:1px solid}
+  .callout .lab{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;font-weight:600}
+  .callout .val{font-weight:600;font-size:14px}
+  .callout .nt{font-size:12px;margin-top:3px;line-height:1.4}
+  .callout.ok{background:var(--green-bg);border-color:#c4ddca}.callout.ok .lab,.callout.ok .val{color:var(--green)}.callout.ok .nt{color:#3c6e53}
+  .callout.warn{background:var(--amber-bg);border-color:#e6d3a3}.callout.warn .lab,.callout.warn .val{color:var(--amber)}.callout.warn .nt{color:#7a5a1a}
+  .callout.bad{background:var(--red-bg);border-color:#e6bcbe}.callout.bad .lab,.callout.bad .val{color:var(--red)}.callout.bad .nt{color:#8a3a3e}
+
+  .block-label{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:2px;text-transform:uppercase;color:var(--ink-soft);margin:0 0 12px;font-weight:600}
+  .areas{display:flex;flex-direction:column;gap:11px;margin-bottom:24px}
+  .area-row{display:grid;grid-template-columns:170px 60px 1fr;gap:14px;align-items:center;font-size:12.5px}
+  @media(max-width:640px){.area-row{grid-template-columns:130px 48px 1fr;gap:10px;font-size:12px}}
+  .area-row .anm{font-weight:600}
+  .area-row .ascore{font-family:'IBM Plex Mono',monospace;font-weight:600;text-align:right}
+  .area-track{height:7px;background:var(--line-soft);border-radius:4px;position:relative;overflow:hidden}
+  .area-track .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+  .area-note{font-size:11.5px;color:var(--ink-soft);margin-top:3px;grid-column:1 / -1;line-height:1.4;padding-left:0}
+
+  .jd-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+  .jd-tag{font-size:12px;padding:6px 11px;border-radius:5px;display:flex;align-items:center;gap:6px;border:1px solid}
+  .jd-tag.met{background:var(--green-bg);border-color:#c4ddca;color:var(--green)}
+  .jd-tag.partial{background:var(--amber-bg);border-color:#e6d3a3;color:var(--amber)}
+  .jd-tag.missing{background:var(--gray-bg);border-color:var(--line);color:var(--ink-soft)}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:24px}
+  @media(max-width:640px){.two-col{grid-template-columns:1fr}}
+  .lst{list-style:none}
+  .lst li{font-size:13px;padding:6px 0 6px 22px;position:relative;line-height:1.45;border-bottom:1px solid var(--line-soft)}
+  .lst li:last-child{border-bottom:none}
+  .lst li::before{position:absolute;left:0;top:6px;font-family:'IBM Plex Mono',monospace;font-weight:700}
+  .lst.pos li::before{content:"+";color:var(--green)}
+  .lst.neg li::before{content:"!";color:var(--red)}
+  .lst.q li::before{content:"?";color:var(--crimson)}
+
+  .summary{font-size:13.5px;line-height:1.6;color:var(--ink);background:#fff;border-left:3px solid var(--crimson);padding:14px 18px;border-radius:0 6px 6px 0}
+
+  footer{border-top:1px solid var(--line);padding:22px 0;font-size:11.5px;color:var(--ink-soft);text-align:center;line-height:1.6}
+  .err{background:var(--red-bg);border:1px solid #e6bcbe;color:var(--red);padding:12px 16px;border-radius:6px;font-size:13px;margin-bottom:12px}
+  .email-actions{margin-top:22px;padding-top:18px;border-top:1px dashed var(--line)}
+  .email-panel{margin-top:14px}
+  .email-hint{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px}
+  .email-box{width:100%;min-height:240px;resize:vertical;border:1.5px solid var(--line);border-radius:6px;padding:14px 16px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:#fff;color:var(--ink);line-height:1.6}
+  .email-box:focus{outline:none;border-color:var(--ink)}
+  .dom-badge{display:inline-block;margin-top:5px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:4px;letter-spacing:.3px}
+  .domain-strip{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px;border-radius:6px;padding:11px 15px;margin-bottom:16px;border:1px solid}
+  .domain-strip .dlab{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;opacity:.85}
+  .domain-strip .dval{font-weight:600;font-size:14px}
+  .domain-strip .dnote{font-size:12px;width:100%;line-height:1.45;opacity:.95}
+  .domain-strip.ok{background:var(--green-bg);border-color:#c4ddca;color:var(--green)}
+  .domain-strip.warn{background:var(--amber-bg);border-color:#e6d3a3;color:var(--amber)}
+  .domain-strip.bad{background:var(--red-bg);border-color:#e6bcbe;color:var(--red)}
+  .scope-line{font-size:12.5px;color:var(--ink-soft);background:var(--gray-bg);border-radius:6px;padding:9px 13px;margin-bottom:14px;line-height:1.45}
+  .scope-line .scope-lab{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;color:var(--ink);margin-right:6px}
+  .exp-list{display:flex;flex-direction:column;gap:0;margin-bottom:24px;border:1px solid var(--line-soft);border-radius:6px;overflow:hidden}
+  .exp-role{padding:12px 15px;border-bottom:1px solid var(--line-soft);background:#fff}
+  .exp-role:last-child{border-bottom:none}
+  .exp-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .exp-title{font-weight:600;font-size:13.5px}
+  .exp-org{font-weight:400;color:var(--ink-soft)}
+  .exp-rel{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:2px 8px;border-radius:4px;white-space:nowrap;border:1px solid}
+  .exp-rel.met{background:var(--green-bg);border-color:#c4ddca;color:var(--green)}
+  .exp-rel.partial{background:var(--amber-bg);border-color:#e6d3a3;color:var(--amber)}
+  .exp-rel.missing{background:var(--gray-bg);border-color:var(--line);color:var(--ink-soft)}
+  .exp-period{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);margin-top:2px}
+  .exp-did{font-size:12.5px;line-height:1.5;margin-top:6px}
+  .disclaimer{font-size:12px;color:var(--ink-soft);background:var(--amber-bg);border:1px solid #e6d3a3;border-radius:6px;padding:12px 16px;margin-top:14px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div id="login" style="position:fixed;inset:0;background:var(--paper);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px">
+  <div style="width:100%;max-width:360px;text-align:center">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--crimson);font-weight:600;margin-bottom:6px">Kushals · Hiring</div>
+    <h1 style="font-family:'Archivo',sans-serif;font-weight:800;font-size:24px;margin-bottom:6px">Warehouse Ops Screener</h1>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:22px">Internal access — enter the team password.</p>
+    <input id="pw" type="password" placeholder="Password" style="width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);font-family:'IBM Plex Sans',sans-serif" />
+    <div id="pwerr" style="color:var(--red);font-size:12.5px;margin-top:8px;min-height:16px"></div>
+    <button id="pwbtn" style="margin-top:8px;width:100%;cursor:pointer;border-radius:6px;font-size:14px;font-weight:600;padding:12px;border:1.5px solid var(--crimson);background:var(--crimson);color:#fff">Enter</button>
+  </div>
+</div>
+
+
+<header>
+  <div class="head-inner">
+    <div class="brand">
+      <span class="kicker">Kushals · Hiring</span>
+      <h1>Warehouse Ops Screener</h1>
+    </div>
+    <div class="role-tag">
+      <b>Warehouse Operations Manager</b><br>
+      Bengaluru<br>
+      Reports in: supervisors, ops executives, data-entry operators
+    </div>
+  </div>
+  <div class="criteria">
+    <div class="criteria-inner">
+      <span class="cl">Must-haves</span>
+      <span class="crit-item"><span class="dot"></span>3+ yrs as <b style="margin-left:3px">Manager</b><span style="opacity:.6;margin-left:3px">(not Asst/Deputy/Lead)</span></span>
+      <span class="crit-item"><span class="dot"></span>Kannada mandatory</span>
+      <span class="crit-item"><span class="dot"></span>Core warehouse ops depth</span>
+      <span class="crit-item"><span class="dot"></span>WMS / ERP · Excel / MIS</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section id="input-sec">
+    <div class="sec-label">Add resumes</div>
+    <div class="drop" id="drop">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <div class="big">Drop resumes here</div>
+      <div class="small">PDF or .txt · multiple files at once · click to browse</div>
+      <input type="file" id="file" accept=".pdf,.txt" multiple style="display:none">
+    </div>
+
+    <div class="or">— or paste one —</div>
+    <textarea id="paste" placeholder="Paste a single resume's text, then click 'Add pasted resume'…"></textarea>
+    <div class="row" style="margin-top:12px">
+      <button class="btn ghost" id="addPaste">+ Add pasted resume</button>
+    </div>
+
+    <div class="chips" id="chips"></div>
+
+    <div class="row">
+      <button class="btn primary" id="analyze" disabled>Analyze &amp; rank candidates</button>
+      <button class="btn ghost" id="clear" style="display:none">Clear all</button>
+    </div>
+    <div class="disclaimer">
+      This tool gives an honest first-pass screen to save you time — it does <b>not</b> make hiring decisions.
+      Always verify manager tenure, Kannada fluency, and core-ops claims directly with the candidate before shortlisting.
+    </div>
+  </section>
+
+  <div id="progress">
+    <div class="pmsg" id="pmsg">Reading resumes…</div>
+    <div class="pbar"><div class="pfill" id="pfill"></div></div>
+    <div class="pmsg" id="pcount" style="font-size:11px;opacity:.7"></div>
+  </div>
+
+  <section id="results">
+    <div class="res-head">
+      <h2>Ranked shortlist</h2>
+      <button class="btn ghost" id="reset" style="padding:8px 16px;font-size:13px">↺ Start over</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px">Sorted by overall fit. Click any row to jump to the full breakdown.</p>
+    <div class="tbl-wrap">
+      <table class="rank">
+        <thead>
+          <tr>
+            <th style="width:42px">#</th>
+            <th>Candidate</th>
+            <th>Verdict</th>
+            <th style="width:60px">Fit</th>
+            <th style="width:90px">Mgr 3yr</th>
+            <th style="width:90px">Kannada</th>
+            <th>Biggest concern</th>
+          </tr>
+        </thead>
+        <tbody id="rankBody"></tbody>
+      </table>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <button class="btn ghost" onclick="toggleSummary()">✉ Draft one email to HR covering all candidates</button>
+    </div>
+    <div class="email-panel" id="summary-panel" style="display:none">
+      <div class="email-hint">Summary note to HR — editable. Review, then copy or open in your mail client.</div>
+      <textarea class="email-box" id="summary-text" style="min-height:300px"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" style="padding:9px 18px;font-size:13px" onclick="copySummary(this)">Copy text</button>
+        <button class="btn ghost" style="padding:9px 18px;font-size:13px" onclick="mailSummary()">Open in mail</button>
+      </div>
+    </div>
+
+    <section style="padding-top:36px">
+      <div class="sec-label">Candidate deep-dives</div>
+      <div id="dives"></div>
+    </section>
+  </section>
+
+</div>
+
+<footer>
+  Screening assistant powered by Claude · scores are advisory · final hiring judgement stays with you.
+</footer>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+/* ---------- Access gate ---------- */
+let ACCESS_PW = sessionStorage.getItem("wops_pw") || "";
+
+function showLogin(show){
+  document.getElementById("login").style.display = show ? "flex" : "none";
+}
+
+async function tryLogin(pw){
+  const errEl = document.getElementById("pwerr");
+  errEl.textContent = "";
+  try{
+    const r = await fetch("/api/analyze",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ ping:true, password:pw })
+    });
+    if(r.status===401){ errEl.textContent = "Wrong password. Try again."; return; }
+    if(!r.ok){ errEl.textContent = "Server not reachable. Check the deployment."; return; }
+    ACCESS_PW = pw;
+    sessionStorage.setItem("wops_pw", pw);
+    showLogin(false);
+  }catch(e){
+    errEl.textContent = "Could not reach the server.";
+  }
+}
+
+window.addEventListener("DOMContentLoaded",()=>{
+  const btn=document.getElementById("pwbtn"), pw=document.getElementById("pw");
+  btn.addEventListener("click",()=>tryLogin(pw.value));
+  pw.addEventListener("keydown",e=>{ if(e.key==="Enter") tryLogin(pw.value); });
+  if(ACCESS_PW){ tryLogin(ACCESS_PW); } else { showLogin(true); pw.focus(); }
+});
+
+let resumes = []; // {id, name, size, text}
+let uid = 0;
+
+const $ = id => document.getElementById(id);
+
+/* ---------- File handling ---------- */
+const drop = $("drop");
+["dragenter","dragover"].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("click",()=>$("file").click());
+drop.addEventListener("drop",ev=>handleFiles(ev.dataTransfer.files));
+$("file").addEventListener("change",ev=>handleFiles(ev.target.files));
+
+async function handleFiles(fileList){
+  for(const f of fileList){
+    try{
+      let text="";
+      if(f.name.toLowerCase().endsWith(".pdf")){ text = await extractPdf(f); }
+      else { text = await f.text(); }
+      if(text.trim().length < 30){ throw new Error("little/no text"); }
+      addResume(f.name, f.size, text);
+    }catch(err){
+      addResume(f.name + " (couldn't read — paste manually)", f.size, "", true);
+    }
+  }
+  $("file").value="";
+}
+
+async function extractPdf(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let out=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    out.push(content.items.map(i=>i.str).join(" "));
+  }
+  return out.join("\n");
+}
+
+function addResume(name,size,text,bad=false){
+  const id = ++uid;
+  resumes.push({id,name,size,text,bad});
+  renderChips();
+}
+
+$("addPaste").addEventListener("click",()=>{
+  const t = $("paste").value.trim();
+  if(t.length<30){ alert("Please paste a fuller resume (at least a few lines)."); return; }
+  addResume("Pasted resume "+(resumes.filter(r=>r.name.startsWith("Pasted")).length+1), t.length, t);
+  $("paste").value="";
+});
+
+function renderChips(){
+  const c = $("chips"); c.innerHTML="";
+  resumes.forEach(r=>{
+    const div=document.createElement("div");
+    div.className="chip";
+    const kb = r.size>1024 ? (r.size/1024).toFixed(0)+" KB" : r.size+" B";
+    div.innerHTML = `<div class="ic">${r.bad?'!':'PDF'}</div>
+      <div class="meta"><div class="nm">${esc(r.name)}</div>
+      <div class="sz">${r.bad?'unreadable':kb}</div></div>
+      <button class="rm" data-id="${r.id}" title="Remove">×</button>`;
+    c.appendChild(div);
+  });
+  c.querySelectorAll(".rm").forEach(b=>b.onclick=()=>{
+    resumes=resumes.filter(r=>r.id!=b.dataset.id); renderChips();
+  });
+  const usable = resumes.filter(r=>!r.bad && r.text.trim().length>30).length;
+  $("analyze").disabled = usable===0;
+  $("clear").style.display = resumes.length? "inline-flex":"none";
+}
+
+$("clear").addEventListener("click",()=>{resumes=[];renderChips();});
+$("reset").addEventListener("click",()=>{
+  resumes=[]; renderChips();
+  $("results").style.display="none";
+  $("input-sec").style.display="block";
+  window.scrollTo({top:0,behavior:"smooth"});
+});
+
+function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* The screening brief now lives server-side in /api/analyze.js */
+
+/* ---------- Analyze ---------- */
+$("analyze").addEventListener("click",runAnalysis);
+
+async function runAnalysis(){
+  const list = resumes.filter(r=>!r.bad && r.text.trim().length>30);
+  if(!list.length) return;
+  $("input-sec").style.display="none";
+  $("results").style.display="none";
+  $("progress").style.display="block";
+  const results=[];
+  for(let i=0;i<list.length;i++){
+    $("pmsg").textContent = `Analyzing candidate ${i+1} of ${list.length}…`;
+    $("pcount").textContent = list[i].name;
+    $("pfill").style.width = ((i)/list.length*100)+"%";
+    try{
+      const r = await analyzeOne(list[i].text);
+      r.__src = list[i].name;
+      results.push(r);
+    }catch(err){
+      results.push({__error:true,__src:list[i].name,name:list[i].name,__msg:(err&&err.message)||"Unknown error"});
+    }
+  }
+  $("pfill").style.width="100%";
+  $("progress").style.display="none";
+  renderResults(results);
+}
+
+async function analyzeOne(text){
+  let res;
+  try{
+    res = await fetch("/api/analyze",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ text:text.slice(0,14000), password:ACCESS_PW })
+    });
+  }catch(netErr){
+    throw new Error("Network error contacting the server.");
+  }
+  if(res.status===401){ showLogin(true); throw new Error("Access denied — check the password."); }
+  if(!res.ok){
+    let detail="";
+    try{ detail=((await res.json()).error)||""; }catch(e){}
+    throw new Error("Server error "+res.status+(detail?(" — "+detail):""));
+  }
+  const data = await res.json();
+  const raw = (data.text||"");
+  if(!raw.trim()) throw new Error("Model returned no text");
+  let clean = raw.replace(/```json|```/g,"").trim();
+  const s=clean.indexOf("{"), e=clean.lastIndexOf("}");
+  if(s>=0 && e>s) clean = clean.slice(s,e+1);
+  try{ return JSON.parse(clean); }
+  catch(pe){
+    const repaired = tryRepairJson(clean);
+    if(repaired) return repaired;
+    throw new Error("Couldn't parse output (likely truncated JSON)");
+  }
+}
+
+function tryRepairJson(str){
+  let s = str.indexOf("{");
+  if(s<0) return null;
+  let t = str.slice(s);
+  for(let cut=t.length; cut>40; cut--){
+    let frag = t.slice(0,cut).replace(/,\s*$/,"").replace(/:\s*$/,'":""').trim();
+    let open=0, inStr=false, esc=false, close="";
+    for(const ch of frag){
+      if(esc){esc=false;continue;}
+      if(ch==='\\'){esc=true;continue;}
+      if(ch==='"'){inStr=!inStr;continue;}
+      if(inStr) continue;
+      if(ch==='{'||ch==='[') open++;
+      if(ch==='}'||ch===']') open--;
+    }
+    if(inStr) frag+='"';
+    let depth=0; const st=[];
+    for(const ch of frag){
+      if(ch==='{'){st.push('}');} else if(ch==='['){st.push(']');}
+      else if(ch==='}'||ch===']'){st.pop();}
+    }
+    close = st.reverse().join("");
+    try{ return JSON.parse(frag+close); }catch(e){}
+  }
+  return null;
+}
+
+/* ---------- Render ---------- */
+function fitColor(s){
+  if(s>=78) return {b:"#1d6e4a",t:"#1d6e4a"};
+  if(s>=60) return {b:"#b07a00",t:"#8a5a00"};
+  if(s>=40) return {b:"#c8102e",t:"#a3232b"};
+  return {b:"#888780",t:"#5c574c"};
+}
+function recClass(r){
+  return {"Strong fit":"strong","Possible fit":"possible","Weak fit":"weak","Not a fit":"no"}[r]||"no";
+}
+function mgrFlag(m){
+  if(!m) return {c:"warn",t:"?"};
+  if(m.meets_requirement===true) return {c:"ok",t:"✓ yes"};
+  if(m.meets_requirement===false) return {c:"bad",t:"✗ no"};
+  return {c:"warn",t:"? unclear"};
+}
+function kanFlag(k){
+  if(k==="confirmed") return {c:"ok",t:"✓"};
+  if(k==="likely") return {c:"warn",t:"~ likely"};
+  return {c:"bad",t:"✗ missing"};
+}
+function domainClass(r){
+  const d = (r.domain_fit||"").toLowerCase();
+  if(d.includes("core")&&!d.includes("outside")) return "ok";
+  if(d.includes("adjacent")) return "warn";
+  return "bad";
+}
+function domainBadge(r){
+  if(!r.primary_domain) return "";
+  const cls = domainClass(r);
+  if(cls==="ok") return "";
+  const map={ok:"#1d6e4a",warn:"#8a5a00",bad:"#a3232b"};
+  const bg={ok:"#e3efe6",warn:"#f6ead0",bad:"#f5e0e1"};
+  return `<span class="dom-badge" style="color:${map[cls]};background:${bg[cls]}">⚠ ${esc(r.primary_domain)}</span>`;
+}
+
+let analyzed = [];
+function renderResults(results){
+  const ok = results.filter(r=>!r.__error).sort((a,b)=>(b.fit_score||0)-(a.fit_score||0));
+  analyzed = ok;
+  const errs = results.filter(r=>r.__error);
+
+  const body = $("rankBody"); body.innerHTML="";
+  ok.forEach((r,i)=>{
+    const fc=fitColor(r.fit_score||0), mf=mgrFlag(r.manager_check), kf=kanFlag(r.kannada);
+    const concern = (r.concerns&&r.concerns[0])||"—";
+    const dom = domainBadge(r);
+    const tr=document.createElement("tr");
+    tr.className="clickable";
+    tr.onclick=()=>document.getElementById("dive-"+i).scrollIntoView({behavior:"smooth",block:"start"});
+    tr.innerHTML=`
+      <td class="rk">${i+1}</td>
+      <td class="nm-cell"><b>${esc(r.name||"Unknown")}</b><span>${esc(r.current_title||"")}${r.total_experience_years?" · "+r.total_experience_years+"y total":""}</span>${dom}</td>
+      <td><span class="pill ${recClass(r.recommendation)}">${esc(r.recommendation||"—")}</span></td>
+      <td class="fit" style="color:${fc.t}">${r.fit_score??"—"}</td>
+      <td class="flag ${mf.c}">${mf.t}</td>
+      <td class="flag ${kf.c}">${kf.t}</td>
+      <td style="font-size:12px;color:var(--ink-soft)">${esc(concern)}</td>`;
+    body.appendChild(tr);
+  });
+  if(errs.length){
+    errs.forEach(e=>{
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>—</td><td class="nm-cell"><b>${esc(e.name)}</b><span>could not analyze</span></td><td colspan="5" style="color:var(--red);font-size:12px">${esc(e.__msg||"Analysis failed")}</td>`;
+      body.appendChild(tr);
+    });
+  }
+
+  const dives = $("dives"); dives.innerHTML="";
+  ok.forEach((r,i)=>dives.appendChild(buildDive(r,i)));
+
+  $("results").style.display="block";
+  $("results").scrollIntoView({behavior:"smooth"});
+}
+
+function buildDive(r,i){
+  const fc=fitColor(r.fit_score||0);
+  const wrap=document.createElement("div");
+  wrap.className="dive"; wrap.id="dive-"+i;
+
+  const mf=mgrFlag(r.manager_check), kf=kanFlag(r.kannada);
+  const mgrCalloutCls = mf.c, kanCalloutCls = (r.kannada==="confirmed")?"ok":(r.kannada==="likely"?"warn":"bad");
+  const mgrNote = r.manager_check ? esc(r.manager_check.note||"") : "Not determinable.";
+  const mgrVal = r.manager_check && r.manager_check.years_as_manager!=null
+      ? r.manager_check.years_as_manager+" yrs as manager"
+      : (mf.t.includes("yes")?"Meets 3-yr rule":"Manager tenure unclear");
+  const kanVal = {"confirmed":"Kannada confirmed","likely":"Kannada likely","not mentioned":"Not mentioned","absent":"Not on resume"}[r.kannada]||"Not mentioned";
+
+  const areas = (r.core_areas||[]).map(a=>{
+    const ac=fitColor(a.score||0);
+    return `<div class="area-row">
+      <span class="anm">${esc(a.area)}</span>
+      <span class="ascore" style="color:${ac.t}">${a.score??"—"}</span>
+      <span class="area-track"><span class="fill" style="width:${a.score||0}%;background:${ac.b}"></span></span>
+      <span class="area-note">${esc(a.note||"")}</span>
+    </div>`;
+  }).join("");
+
+  const jd = (r.other_jd||[]).map(j=>{
+    const cls = j.status==="met"?"met":(j.status==="partial"?"partial":"missing");
+    const mark = j.status==="met"?"✓":(j.status==="partial"?"~":"✗");
+    return `<span class="jd-tag ${cls}">${mark} ${esc(j.req)}</span>`;
+  }).join("");
+
+  const li = (arr,cls)=> (arr&&arr.length? arr.map(x=>`<li>${esc(x)}</li>`).join("") : `<li style="color:var(--ink-soft)">—</li>`);
+
+  const relMap={high:{c:"met",t:"high relevance"},medium:{c:"partial",t:"some relevance"},low:{c:"missing",t:"low relevance"}};
+  const exp = (r.experience_breakdown||[]).map(e=>{
+    const rel = relMap[(e.relevance||"low")]||relMap.low;
+    return `<div class="exp-role">
+      <div class="exp-top">
+        <span class="exp-title">${esc(e.role||"Role")}${e.org?` · <span class="exp-org">${esc(e.org)}</span>`:""}</span>
+        <span class="exp-rel ${rel.c}">${rel.t}</span>
+      </div>
+      ${e.period?`<div class="exp-period">${esc(e.period)}</div>`:""}
+      <div class="exp-did">${esc(e.did||"")}</div>
+    </div>`;
+  }).join("");
+
+  wrap.innerHTML=`
+    <div class="dive-head">
+      <div class="ring" style="border-color:${fc.b};color:${fc.t}">${r.fit_score??"—"}</div>
+      <div class="who">
+        <h3>${esc(r.name||"Unknown")}</h3>
+        <div class="sub">${esc(r.current_title||"Title not found")}${r.total_experience_years?" · "+r.total_experience_years+" yrs total experience":""} · from ${esc(r.__src||"")}</div>
+      </div>
+      <span class="pill ${recClass(r.recommendation)}" style="font-size:12px;padding:5px 13px">${esc(r.recommendation||"—")}</span>
+    </div>
+    <div class="dive-body">
+
+      <div class="callouts">
+        <div class="callout ${mgrCalloutCls}">
+          <div class="lab">Manager requirement · 3+ yrs</div>
+          <div class="val">${esc(mgrVal)}</div>
+          <div class="nt">${mgrNote}</div>
+        </div>
+        <div class="callout ${kanCalloutCls}">
+          <div class="lab">Kannada · mandatory</div>
+          <div class="val">${esc(kanVal)}</div>
+          <div class="nt">${r.kannada==="confirmed"?"Stated on resume.":"Verify in screening call — do not assume."}</div>
+        </div>
+      </div>
+
+      <p class="block-label">Experience, in depth</p>
+      ${r.scope_scale?`<div class="scope-line"><span class="scope-lab">Scope &amp; scale found</span> ${esc(r.scope_scale)}</div>`:""}
+      <div class="exp-list">${exp || '<div class="exp-did" style="color:var(--ink-soft)">No role-level detail could be extracted.</div>'}</div>
+
+      <p class="block-label">Core warehouse operations</p>
+      <div class="domain-strip ${domainClass(r)}">
+        <span class="dlab">Primary experience</span>
+        <span class="dval">${esc(r.primary_domain||"—")}</span>
+        <span class="dnote">${esc(r.domain_note||"")}</span>
+      </div>
+      <div class="areas">${areas}</div>
+
+      <p class="block-label">Other JD requirements</p>
+      <div class="jd-grid">${jd}</div>
+
+      <div class="two-col">
+        <div>
+          <p class="block-label">Strengths</p>
+          <ul class="lst pos">${li(r.strengths)}</ul>
+        </div>
+        <div>
+          <p class="block-label">Concerns &amp; red flags</p>
+          <ul class="lst neg">${li(r.concerns)}</ul>
+        </div>
+      </div>
+
+      <p class="block-label">Verify in interview</p>
+      <ul class="lst q" style="margin-bottom:22px">${li(r.verify_in_interview)}</ul>
+
+      <p class="block-label">Verdict</p>
+      <div class="summary">${esc(r.summary||"")}</div>
+
+      <div class="email-actions">
+        <button class="btn ghost" onclick="toggleEmail(${i})">✉ Draft "not moving forward" email to HR</button>
+      </div>
+      <div class="email-panel" id="email-${i}" style="display:none">
+        <div class="email-hint">Internal note to HR — editable. Review, then copy or open in your mail client.</div>
+        <textarea class="email-box" id="emailtext-${i}"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary" style="padding:9px 18px;font-size:13px" onclick="copyEmail(${i},this)">Copy text</button>
+          <button class="btn ghost" style="padding:9px 18px;font-size:13px" onclick="mailEmail(${i})">Open in mail</button>
+        </div>
+      </div>
+    </div>`;
+  return wrap;
+}
+
+/* ---------- HR 'not moving forward' email ---------- */
+function buildRejectEmail(r){
+  const name = r.name || "this candidate";
+  const role = "Warehouse Operations Manager";
+  const reasons = [];
+
+  const isOutside = (r.domain_fit||"").toLowerCase().indexOf("core") === -1 || (r.domain_fit||"").toLowerCase().indexOf("outside") > -1;
+  if(isOutside && r.primary_domain){
+    reasons.push(`Their main experience is in ${r.primary_domain}, not core warehouse work \u2014 the warehouse side looks thin.`);
+  }
+
+  const m = r.manager_check || {};
+  if(m.meets_requirement === false){
+    reasons.push(`They haven't done three years as an actual manager` + (r.current_title ? ` (most recent role: ${r.current_title})` : ``) + `. Assistant, deputy, lead or supervisor time doesn't count for what we need.`);
+  } else if(m.meets_requirement === "unclear" || m.true_manager_role === "unclear"){
+    reasons.push(`I couldn't confirm three years in a real manager role from the CV.`);
+  }
+
+  if(r.kannada && r.kannada !== "confirmed"){
+    reasons.push(`Kannada isn't mentioned anywhere, and it's a must for this role.`);
+  }
+
+  const weak = (r.core_areas||[]).filter(a=>(a.score||0) < 50).map(a=>a.area);
+  if(weak.length){
+    reasons.push(`Not much to show in some core areas: ${weak.join(", ")}.`);
+  }
+
+  (r.concerns||[]).slice(0,2).forEach(c=>{ if(c) reasons.push(c.replace(/\.$/,"") + "."); });
+
+  if(!reasons.length){
+    reasons.push(`On balance they just don't match what we're after as well as the others.`);
+  }
+
+  const bullets = reasons.map(x=>"- " + x).join("\n");
+  const fit = (r.fit_score!=null) ? `${r.fit_score}/100` : "low";
+
+  const subject = `${name} \u2014 ${role} (not taking forward)`;
+  const body =
+`Hi team,
+
+I've gone through ${name}'s CV for the ${role} role and I don't think we should take them forward.
+
+Here's why:
+${bullets}
+
+Overall it came out at ${fit}.
+
+Thanks,
+[Your name]`;
+
+  return {subject, text: `Subject: ${subject}\n\n${body}`, raw_body: body};
+}
+
+function shortTake(r){
+  const bits = [];
+  const isOutside = (r.domain_fit||"").toLowerCase().indexOf("core") === -1 || (r.domain_fit||"").toLowerCase().indexOf("outside") > -1;
+  const m = r.manager_check || {};
+
+  if(!isOutside && m.meets_requirement === true){
+    bits.push(`Solid warehouse background with the three years of real manager experience we want.`);
+  } else {
+    if(isOutside && r.primary_domain){
+      bits.push(`Mostly ${r.primary_domain.toLowerCase()} rather than core warehouse work.`);
+    }
+    if(m.meets_requirement === false){
+      bits.push(`Not three years as an actual manager.`);
+    } else if(m.meets_requirement === "unclear" || m.true_manager_role === "unclear"){
+      bits.push(`Manager tenure unclear from the CV.`);
+    }
+  }
+
+  if(r.kannada && r.kannada !== "confirmed"){
+    bits.push(`Kannada not mentioned \u2014 needs checking.`);
+  }
+
+  if(bits.length < 2){
+    if(r.strengths && r.strengths[0]) bits.push(r.strengths[0].replace(/\.$/,"") + ".");
+    else if(r.concerns && r.concerns[0]) bits.push(r.concerns[0].replace(/\.$/,"") + ".");
+  }
+
+  let step = "";
+  const rec = r.recommendation || "";
+  if(rec === "Strong fit") step = "Worth calling in.";
+  else if(rec === "Possible fit") step = "Could be worth a call if we're short on options.";
+  else if(rec === "Weak fit") step = "I'd lean against this one.";
+  else step = "I wouldn't take this one forward.";
+
+  return bits.slice(0,2).join(" ") + " " + step;
+}
+
+function buildSummaryEmail(list){
+  const n = list.length;
+  const blocks = list.map((r,i)=>{
+    const name = r.name || "Unknown";
+    const fit = (r.fit_score!=null) ? `${r.fit_score}/100` : "\u2014";
+    const rec = r.recommendation || "";
+    return `${i+1}. ${name} \u2014 ${rec} (${fit})\n${shortTake(r)}`;
+  }).join("\n\n");
+
+  const subject = `Warehouse Operations Manager \u2014 screening summary (${n} ${n===1?"candidate":"candidates"})`;
+  const body =
+`Hi team,
+
+I've been through the ${n} ${n===1?"CV":"CVs"} for the Warehouse Operations Manager role. Quick rundown below, best fit first:
+
+${blocks}
+
+Let me know who you'd like to take forward.
+
+Thanks,
+[Your name]`;
+
+  return {subject, text: `Subject: ${subject}\n\n${body}`, raw_body: body};
+}
+
+function toggleSummary(){
+  const panel = document.getElementById("summary-panel");
+  if(panel.style.display === "none"){
+    const ta = document.getElementById("summary-text");
+    if(!ta.value){ ta.value = buildSummaryEmail(analyzed).text; }
+    panel.style.display = "block";
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight + 4, 560) + "px";
+  } else { panel.style.display = "none"; }
+}
+
+function copySummary(btn){
+  const ta = document.getElementById("summary-text");
+  navigator.clipboard.writeText(ta.value).then(()=>{
+    const old = btn.textContent; btn.textContent = "Copied \u2713";
+    setTimeout(()=>btn.textContent = old, 1600);
+  }).catch(()=>{ ta.select(); document.execCommand("copy"); });
+}
+
+function mailSummary(){
+  const e = buildSummaryEmail(analyzed);
+  window.location.href = "mailto:?subject=" + encodeURIComponent(e.subject) + "&body=" + encodeURIComponent(e.raw_body);
+}
+
+function toggleEmail(i){
+  const panel = document.getElementById("email-"+i);
+  if(panel.style.display === "none"){
+    const ta = document.getElementById("emailtext-"+i);
+    if(!ta.value){ ta.value = buildRejectEmail(analyzed[i]).text; }
+    panel.style.display = "block";
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight + 4, 460) + "px";
+  } else {
+    panel.style.display = "none";
+  }
+}
+
+function copyEmail(i,btn){
+  const ta = document.getElementById("emailtext-"+i);
+  navigator.clipboard.writeText(ta.value).then(()=>{
+    const old = btn.textContent; btn.textContent = "Copied ✓";
+    setTimeout(()=>btn.textContent = old, 1600);
+  }).catch(()=>{ ta.select(); document.execCommand("copy"); });
+}
+
+function mailEmail(i){
+  const e = buildRejectEmail(analyzed[i]);
+  window.location.href = "mailto:?subject=" + encodeURIComponent(e.subject) + "&body=" + encodeURIComponent(e.raw_body);
+}
+</script>
+</body>
+</html>
