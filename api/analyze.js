@@ -106,8 +106,8 @@ export default async function handler(req, res) {
   body = body || {};
 
   // Password gate
-  const required = process.env.ACCESS_PASSWORD;
-  if (required && body.password !== required) {
+  const required = process.env.ACCESS_PASSWORD || "AIscreening2026";
+  if (body.password !== required) {
     return res.status(401).json({ error: "Wrong password" });
   }
 
