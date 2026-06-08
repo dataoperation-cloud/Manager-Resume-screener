@@ -297,7 +297,7 @@
     </div>
 
     <div class="row" style="margin-top:14px">
-      <button class="btn ghost" onclick="toggleSummary()">✉ Draft one email to HR covering all candidates</button>
+      <button class="btn primary" id="summaryBtn" onclick="toggleSummary()" style="display:none">✉ Draft HR summary email (all candidates)</button>
     </div>
     <div class="email-panel" id="summary-panel" style="display:none">
       <div class="email-hint">Summary note to HR — editable. Review, then copy or open in your mail client.</div>
@@ -431,9 +431,13 @@ function renderChips(){
 
 $("clear").addEventListener("click",()=>{resumes=[];renderChips();});
 $("reset").addEventListener("click",()=>{
-  resumes=[]; renderChips();
+  resumes=[]; analyzed=[]; renderChips();
   $("results").style.display="none";
   $("input-sec").style.display="block";
+  $("summary-panel").style.display="none";
+  $("summary-text").value="";
+  const summaryBtn = document.getElementById("summaryBtn");
+  if(summaryBtn) summaryBtn.style.display="none";
   window.scrollTo({top:0,behavior:"smooth"});
 });
 
@@ -567,6 +571,8 @@ function renderResults(results){
   const ok = results.filter(r=>!r.__error).sort((a,b)=>(b.fit_score||0)-(a.fit_score||0));
   analyzed = ok;
   const errs = results.filter(r=>r.__error);
+  const summaryBtn = document.getElementById("summaryBtn");
+  if(summaryBtn) summaryBtn.style.display = ok.length > 1 ? "inline-flex" : "none";
 
   const body = $("rankBody"); body.innerHTML="";
   ok.forEach((r,i)=>{
@@ -811,15 +817,26 @@ function buildSummaryEmail(list){
   const blocks = list.map((r,i)=>{
     const name = r.name || "Unknown";
     const fit = (r.fit_score!=null) ? `${r.fit_score}/100` : "\u2014";
-    const rec = r.recommendation || "";
-    return `${i+1}. ${name} \u2014 ${rec} (${fit})\n${shortTake(r)}`;
+    const rec = r.recommendation || "\u2014";
+    const m = r.manager_check || {};
+    const mgrLine = m.meets_requirement === true
+      ? `Manager 3yr: Met (${m.years_as_manager||"?"}yrs)`
+      : m.meets_requirement === false
+        ? `Manager 3yr: NOT met \u2014 ${m.note||""}`
+        : `Manager 3yr: Unclear \u2014 ${m.note||""}`;
+    const kanLine = r.kannada === "confirmed" ? "Kannada: Confirmed"
+      : r.kannada === "likely" ? "Kannada: Likely (verify in call)"
+      : "Kannada: NOT mentioned \u2014 must verify";
+    const strengths = (r.strengths||[]).slice(0,2).map(s=>`   + ${s}`).join("\n");
+    const concerns  = (r.concerns||[]).slice(0,3).map(c=>`   ! ${c}`).join("\n");
+    return `${i+1}. ${name} \u2014 ${rec} (${fit})\n   ${mgrLine} | ${kanLine}\n${strengths}\n${concerns}`;
   }).join("\n\n");
 
-  const subject = `Warehouse Operations Manager \u2014 screening summary (${n} ${n===1?"candidate":"candidates"})`;
+  const subject = `Warehouse Operations Manager \u2014 Screening Summary (${n} ${n===1?"candidate":"candidates"})`;
   const body =
 `Hi team,
 
-I've been through the ${n} ${n===1?"CV":"CVs"} for the Warehouse Operations Manager role. Quick rundown below, best fit first:
+I've reviewed ${n} ${n===1?"CV":"CVs"} for the Warehouse Operations Manager role. Summary below, best fit first:
 
 ${blocks}
 
