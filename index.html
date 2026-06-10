@@ -814,33 +814,63 @@ function shortTake(r){
 
 function buildSummaryEmail(list){
   const n = list.length;
+  const eligible = [];
+  const notEligible = [];
+
   const blocks = list.map((r,i)=>{
     const name = r.name || "Unknown";
-    const fit = (r.fit_score!=null) ? `${r.fit_score}/100` : "\u2014";
-    const rec = r.recommendation || "\u2014";
+    const rec = r.recommendation || "";
+    const isEligible = rec === "Strong fit" || rec === "Possible fit";
+    if(isEligible) eligible.push(name); else notEligible.push(name);
+
     const m = r.manager_check || {};
-    const mgrLine = m.meets_requirement === true
-      ? `Manager 3yr: Met (${m.years_as_manager||"?"}yrs)`
-      : m.meets_requirement === false
-        ? `Manager 3yr: NOT met \u2014 ${m.note||""}`
-        : `Manager 3yr: Unclear \u2014 ${m.note||""}`;
-    const kanLine = r.kannada === "confirmed" ? "Kannada: Confirmed"
-      : r.kannada === "likely" ? "Kannada: Likely (verify in call)"
-      : "Kannada: NOT mentioned \u2014 must verify";
-    const strengths = (r.strengths||[]).slice(0,2).map(s=>`   + ${s}`).join("\n");
-    const concerns  = (r.concerns||[]).slice(0,3).map(c=>`   ! ${c}`).join("\n");
-    return `${i+1}. ${name} \u2014 ${rec} (${fit})\n   ${mgrLine} | ${kanLine}\n${strengths}\n${concerns}`;
-  }).join("\n\n");
+    const bullets = [];
 
-  const subject = `Warehouse Operations Manager \u2014 Screening Summary (${n} ${n===1?"candidate":"candidates"})`;
+    if(isEligible){
+      // For eligible: lead with what makes them qualify
+      if(m.meets_requirement === true && m.years_as_manager)
+        bullets.push(`Completed ${m.years_as_manager} years in a true Manager/DC Manager designation \u2014 meets the minimum manager-level experience requirement.`);
+      (r.strengths||[]).slice(0,2).forEach(s=>bullets.push(s));
+      if(m.meets_requirement !== true)
+        bullets.push(`Manager tenure: ${m.note||"verify in interview"}.`);
+      if(r.kannada !== "confirmed")
+        bullets.push("Kannada not confirmed on resume \u2014 must verify in screening call.");
+      // Add a note if there's something to watch
+      const watchConcern = (r.concerns||[])[0];
+      if(watchConcern) bullets.push(`Note: ${watchConcern}`);
+    } else {
+      // For not eligible: lead with disqualifying reasons
+      (r.concerns||[]).slice(0,3).forEach(c=>bullets.push(c));
+      if(m.meets_requirement === false)
+        bullets.push(`Does not meet the requirement of 3 years of Warehouse/Operations Manager experience.`);
+      if(r.kannada !== "confirmed")
+        bullets.push("Kannada not confirmed on resume.");
+    }
+
+    const bulletLines = bullets.map(b=>`  \u2022 ${b}`).join("\n");
+    const statusLine = isEligible ? "Eligible for Further Evaluation" : "Not Eligible as per Current Requirement";
+    return `${i+1}. ${name}\n${statusLine}\n\n${bulletLines}`;
+  }).join("\n\n---\n\n");
+
+  // Final recommendation line
+  let closing = "";
+  if(eligible.length === 0){
+    closing = "Based on the above review, none of the candidates currently meet the defined experience criteria. We may need to source additional profiles.";
+  } else if(eligible.length === 1){
+    closing = `Based on the above review, ${eligible[0]} is the only candidate who currently meets the defined experience criteria. Kindly check with the candidate and schedule the interview (Virtual is also Ok).`;
+  } else {
+    closing = `Based on the above review, ${eligible.join(" and ")} meet the defined experience criteria. Kindly check with these candidates and schedule their interviews (Virtual is also Ok).`;
+  }
+
+  const subject = `Warehouse Operations Manager \u2014 Profile Review (${n} ${n===1?"candidate":"candidates"})`;
   const body =
-`Hi team,
+`Hi,
 
-I've reviewed ${n} ${n===1?"CV":"CVs"} for the Warehouse Operations Manager role. Summary below, best fit first:
+As discussed, I reviewed the profiles. Please find my observations below:
 
 ${blocks}
 
-Let me know who you'd like to take forward.
+${closing}
 
 Thanks,
 [Your name]`;

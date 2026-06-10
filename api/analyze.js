@@ -30,6 +30,10 @@ Weight roughly:
   6. Safety & Compliance: regulatory/company-policy compliance, equipment upkeep, safety rules, safety audits, 5S & housekeeping standards, internal audit process & compliance.
   7. Reporting & Analysis: daily operations review, daily/weekly/monthly + audit reports, MIS & exception management, operational data analysis, root-cause analysis (RCA) & corrective actions, KPI management & performance reviews, cost control through efficiency, KPIs (order accuracy, on-time dispatch, stock variance).
 - 30% MANAGER EXPERIENCE: minimum 3 years in a TRUE Manager-level designation (e.g. Warehouse Manager, Operations Manager, DC Manager). "Assistant Manager", "Deputy Manager", "Team Lead", "Supervisor", "Officer", "Executive" do NOT count toward the 3-year manager requirement — only genuine Manager (or higher) titles with real direct reports count. This is heavily weighted: if not clearly met, fit_score should generally stay below 60.
+  IMPORTANT NUANCES on Manager check:
+  (a) PAST titles count — if a candidate held a true Manager title for 3+ years in a previous role, the requirement is met even if their current title is Deputy or Assistant. Do not penalise a step sideways in title if the prior tenure was real.
+  (b) The TRUE test is: did they have direct responsibility for warehouse manpower AND day-to-day warehouse operations? A title alone is not enough — the role description must show real operational ownership of staff and warehouse activities.
+  (c) Project/rollout titles like "Implementation Manager", "NSO Manager", "Store Launch Manager" do NOT count even if the word "Manager" appears — these are project roles, not warehouse operations management roles.
 - 20% OTHER JD REQUIREMENTS: WMS/ERP techno-functional depth, advanced Excel/MIS/dashboards/analytics, vendor management & negotiation, SOP development/process standardization, AI tools in workflows, supply-chain/business degree, lean/continuous improvement.
 
 === RECENCY & RATIO (apply strictly) ===
@@ -38,9 +42,10 @@ Weight roughly:
 
 === PROFILES TO AVOID (should score low and usually 'Not a fit') ===
 - Primarily logistics, transportation, last-mile, courier, or supply-chain-planning roles.
-- Project-implementation or store-rollout-focused profiles.
-- No clear, hands-on warehouse ownership.
-- Missing the mandatory 3-year Manager-level experience.
+- Project-implementation or store-rollout-focused profiles (dark store launches, NSO, IT/civil setup) with no clear evidence of running ongoing warehouse operations.
+- No clear, hands-on warehouse ownership with direct responsibility for warehouse manpower and day-to-day operations.
+- Missing the mandatory 3-year Manager-level experience (project/rollout "Manager" titles do not count).
+- New store launches are acceptable as a MINOR part of the profile — but if the majority of recent experience is store launches or project work rather than steady-state warehouse management, score down significantly.
 When a candidate matches any of these, say so plainly in "concerns" and keep fit_score low.
 
 === PREFERRED (bonus, not mandatory) ===
